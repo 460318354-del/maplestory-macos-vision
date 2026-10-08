@@ -16,6 +16,9 @@ without changing the perception and decision layers.
 
 - macOS window capture through Quartz
 - configurable frame and region processing
+- left-lower platform stump recognition with two shade templates
+- multi-frame confirmation for moving monster candidates
+- HP-bar observation and dry-run heal proposals
 - route/action proposal based on a color-coded route image
 - dry-run debug output
 - platform interface reserved for a future Windows backend
@@ -75,6 +78,13 @@ python -m maplevision \
   --dry-run \
   --debug-output work/captures/minimap-debug.png
 ```
+
+The current combat milestone uses the yellow minimap player dot, a configured
+left-lower platform region, two stump shade templates, multi-frame tracking,
+and the HP bar to propose `hold_attack(ctrl)`, `heal(1)`, or `observe`.
+The red markers on the minimap represent other players and are deliberately
+not used as attack targets. These are still action proposals only while
+`dry-run` is enabled.
 
 For deterministic local testing with an image:
 

@@ -17,6 +17,39 @@ minimap:
     lower: [20, 120, 120]
     upper: [40, 255, 255]
 
+combat:
+  enabled: true
+  attack_action: "hold_attack(ctrl)"
+  heal_action: "heal(1)"
+  observe_action: "observe"
+  monsters:
+    enabled: true
+    # Lower-left current-platform spawn area. Coordinates are relative to the
+    # captured window image, not the macOS desktop.
+    region: [0, 1220, 760, 150]
+    templates:
+      - assets/templates/stump/stump_single_light_upper.png
+      - assets/templates/stump/stump_single_dark_upper.png
+    threshold: 0.62
+    overlap_threshold: 0.45
+    peak_window: 45
+    max_results: 8
+    confirm_frames: 2
+    max_misses: 2
+    max_distance: 120
+  health:
+    enabled: true
+    # Leave empty to auto-locate the bottom HP bar in the left half of the UI.
+    region: []
+    expected_width: 210
+    low_threshold: 0.40
+    color_hsv:
+      ranges:
+        - lower: [0, 100, 80]
+          upper: [12, 255, 255]
+        - lower: [168, 100, 80]
+          upper: [179, 255, 255]
+
 route:
   image: ""
   search_radius: 40

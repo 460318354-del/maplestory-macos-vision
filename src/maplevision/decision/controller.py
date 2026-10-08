@@ -7,7 +7,9 @@ from typing import Any
 
 from ..capture.base import FrameSource
 from ..platform.macos.input import MacOSInputController
-from ..vision.minimap import observe_minimap, save_debug_frame
+from ..vision.combat import observe_combat, save_combat_debug_frame
+from ..vision.minimap import observe_minimap
+from ..vision.monster import MonsterTracker
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,12 @@ class VisionController:
         self.source = source
         self.input = input_controller
         self.config = config
+        monster_config = config.get("combat", {}).get("monsters", {})
+        self.monster_tracker = MonsterTracker(
+            confirm_frames=int(monster_config.get("confirm_frames", 2)),
+            max_misses=int(monster_config.get("max_misses", 2)),
+            max_distance=int(monster_config.get("max_distance", 120)),
+        )
 
     def run(self, max_frames: int | None = None) -> None:
         fps = max(1, int(self.config["system"].get("fps", 8)))
@@ -57,16 +65,38 @@ class VisionController:
         )
         if observation.player_global is None:
             logger.warning("player point not found")
-            return "none"
-        point = observation.player_global
-        logger.info(
-            "minimap player: local=(%s, %s) global=(%s, %s)",
-            observation.player_local.x,
-            observation.player_local.y,
-            point.x,
-            point.y,
+        else:
+            logger.info(
+                "minimap player: local=(%s, %s) global=(%s, %s)",
+                observation.player_local.x,
+                observation.player_local.y,
+                observation.player_global.x,
+                observation.player_global.y,
+            )
+
+        combat = observe_combat(
+            frame,
+            self.config.get("combat", {}),
+            observation,
+            self.monster_tracker,
         )
+        if combat.health.ratio is None:
+            logger.info("hp: not-found")
+        else:
+            logger.info("hp: %.1f%% healthy=%s", combat.health.ratio * 100, combat.health.healthy)
+        if combat.target is None:
+            logger.info("combat: targets=%s selected=none reason=%s", len(combat.targets), combat.reason)
+        else:
+            logger.info(
+                "combat: targets=%s selected=%s score=%.3f action=%s reason=%s",
+                len(combat.targets),
+                combat.target.box,
+                combat.target.score,
+                combat.action,
+                combat.reason,
+            )
+
         debug_output = self.config["system"].get("debug_output", "")
         if debug_output:
-            save_debug_frame(frame, observation, Path(debug_output))
-        return "observe"
+            save_combat_debug_frame(frame, observation, combat, Path(debug_output))
+        return combat.action
