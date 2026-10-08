@@ -130,9 +130,20 @@ class MacOSWindowSource(FrameSource):
 
         width = quartz.CGImageGetWidth(image)
         height = quartz.CGImageGetHeight(image)
+        bytes_per_row = quartz.CGImageGetBytesPerRow(image)
         provider = quartz.CGImageGetDataProvider(image)
         data = quartz.CGDataProviderCopyData(provider)
-        frame = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 4))
+        expected_size = height * bytes_per_row
+        raw = np.frombuffer(data, dtype=np.uint8)
+        if raw.size < expected_size:
+            raise RuntimeError(
+                "Captured window image buffer is smaller than its declared "
+                f"stride: {raw.size} < {expected_size}"
+            )
+        # Quartz rows may include alignment padding, especially on Retina
+        # displays. Read using the declared stride, then remove the padding.
+        frame = raw[:expected_size].reshape((height, bytes_per_row))
+        frame = frame[:, : width * 4].reshape((height, width, 4))
         return frame[:, :, :3].copy()
 
     def close(self) -> None:
