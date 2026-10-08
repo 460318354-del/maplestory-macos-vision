@@ -1,0 +1,28 @@
+system:
+  fps: 8
+  dry_run: true
+  debug: true
+
+game_window:
+  title_contains: "MapleStory"
+
+capture:
+  test_image: ""
+
+vision:
+  player_color_hsv:
+    lower: [20, 120, 120]
+    upper: [40, 255, 255]
+  player_region: [0, 0, 320, 240]
+
+route:
+  image: ""
+  search_radius: 40
+  colors:
+    "255,0,0": "left"
+    "0,0,255": "right"
+    "255,127,0": "left_jump"
+    "0,255,255": "right_jump"
+    "127,255,0": "down_jump"
+    "0,255,127": "stop"
+    "255,255,0": "goal"
