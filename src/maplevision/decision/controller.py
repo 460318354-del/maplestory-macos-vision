@@ -22,9 +22,10 @@ class VisionController:
         self.input = input_controller
         self.config = config
 
-    def run(self) -> None:
+    def run(self, max_frames: int | None = None) -> None:
         fps = max(1, int(self.config["system"].get("fps", 8)))
         delay = 1.0 / fps
+        frames = 0
         try:
             while True:
                 started = time.monotonic()
@@ -33,6 +34,9 @@ class VisionController:
                     return
                 action = self._propose_action(frame)
                 self.input.emit(action or "none")
+                frames += 1
+                if max_frames is not None and frames >= max_frames:
+                    return
                 elapsed = time.monotonic() - started
                 if elapsed < delay:
                     time.sleep(delay - elapsed)

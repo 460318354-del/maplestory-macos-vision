@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
-
 from .base import load_bgr_image
 
 
@@ -19,4 +17,4 @@ class TestImageSource:
         return self._frame.copy()
 
     def close(self) -> None:
-        self._frame = np.empty((0, 0, 3), dtype=np.uint8)
+        self._frame = None

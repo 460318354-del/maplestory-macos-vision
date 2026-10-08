@@ -48,6 +48,24 @@ python -m pip install -e '.[dev]'
 python -m maplevision --window-title "MapleStory" --dry-run
 ```
 
+List visible macOS windows before binding:
+
+```bash
+python -m maplevision --list-windows
+```
+
+Bind the target window and print its metadata without entering the loop:
+
+```bash
+python -m maplevision --bind-window --window-title "MapleStory"
+```
+
+Capture and process exactly one frame after binding:
+
+```bash
+python -m maplevision --window-title "MapleStory" --once --dry-run
+```
+
 For deterministic local testing with an image:
 
 ```bash
