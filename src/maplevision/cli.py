@@ -27,6 +27,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--window-id", type=int, default=None)
     parser.add_argument("--test-image", default=None)
     parser.add_argument(
+        "--debug-output",
+        default=None,
+        help="Write the annotated frame to this path after processing.",
+    )
+    parser.add_argument(
         "--once",
         action="store_true",
         help="Capture and process one frame, then exit.",
@@ -51,6 +56,8 @@ def main(argv: list[str] | None = None) -> int:
         config["game_window"]["title_contains"] = args.window_title
     if args.test_image:
         config["capture"]["test_image"] = args.test_image
+    if args.debug_output:
+        config["system"]["debug_output"] = args.debug_output
     if args.dry_run:
         config["system"]["dry_run"] = True
 

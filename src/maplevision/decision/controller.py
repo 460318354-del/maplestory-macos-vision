@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 import time
+from pathlib import Path
 from typing import Any
 
 from ..capture.base import FrameSource
 from ..platform.macos.input import MacOSInputController
-from ..vision.player import find_color_point
+from ..vision.minimap import observe_minimap, save_debug_frame
 
 logger = logging.getLogger(__name__)
 
@@ -44,17 +45,28 @@ class VisionController:
             self.source.close()
 
     def _propose_action(self, frame) -> str | None:
-        vision = self.config["vision"]
-        lower = tuple(vision["player_color_hsv"]["lower"])
-        upper = tuple(vision["player_color_hsv"]["upper"])
-        point = find_color_point(
+        minimap = self.config["minimap"]
+        region = tuple(minimap["region"])
+        lower = tuple(minimap["player_color_hsv"]["lower"])
+        upper = tuple(minimap["player_color_hsv"]["upper"])
+        observation = observe_minimap(
             frame,
-            tuple(vision["player_region"]),
+            region,
             lower,
             upper,
         )
-        if point is None:
+        if observation.player_global is None:
             logger.warning("player point not found")
             return "none"
-        logger.info("player point: (%s, %s)", point.x, point.y)
+        point = observation.player_global
+        logger.info(
+            "minimap player: local=(%s, %s) global=(%s, %s)",
+            observation.player_local.x,
+            observation.player_local.y,
+            point.x,
+            point.y,
+        )
+        debug_output = self.config["system"].get("debug_output", "")
+        if debug_output:
+            save_debug_frame(frame, observation, Path(debug_output))
         return "observe"

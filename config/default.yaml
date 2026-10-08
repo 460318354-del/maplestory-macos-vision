@@ -2,6 +2,7 @@ system:
   fps: 8
   dry_run: true
   debug: true
+  debug_output: ""
 
 game_window:
   title_contains: "MapleStory"
@@ -9,11 +10,12 @@ game_window:
 capture:
   test_image: ""
 
-vision:
+minimap:
+  # Map content area inside the minimap, excluding the title/header.
+  region: [70, 285, 500, 180]
   player_color_hsv:
     lower: [20, 120, 120]
     upper: [40, 255, 255]
-  player_region: [0, 0, 320, 240]
 
 route:
   image: ""

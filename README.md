@@ -66,6 +66,16 @@ Capture and process exactly one frame after binding:
 python -m maplevision --window-title "MapleStory" --once --dry-run
 ```
 
+Write an annotated frame showing the minimap region and detected player point:
+
+```bash
+python -m maplevision \
+  --window-title "MapleStory" \
+  --once \
+  --dry-run \
+  --debug-output work/captures/minimap-debug.png
+```
+
 For deterministic local testing with an image:
 
 ```bash

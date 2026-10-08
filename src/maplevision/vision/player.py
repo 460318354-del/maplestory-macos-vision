@@ -23,7 +23,12 @@ def find_color_point(
     if roi.size == 0:
         return None
     mask = cv2.inRange(cv2.cvtColor(roi, cv2.COLOR_BGR2HSV), lower_hsv, upper_hsv)
-    moments = cv2.moments(mask)
+    component_count, labels, stats, _ = cv2.connectedComponentsWithStats(mask)
+    if component_count <= 1:
+        return None
+    largest_label = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    component = np.where(labels == largest_label, 255, 0).astype(np.uint8)
+    moments = cv2.moments(component)
     if moments["m00"] == 0:
         return None
     center_x = int(moments["m10"] / moments["m00"]) + x
