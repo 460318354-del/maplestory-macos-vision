@@ -9,6 +9,7 @@ import numpy as np
 
 from .minimap import MinimapObservation, render_debug_frame
 from .monster import MonsterDetection, MonsterTracker, detect_monsters
+from .player_screen import PlayerScreenDetection, detect_player_screen
 
 
 @dataclass(frozen=True)
@@ -21,8 +22,10 @@ class HealthObservation:
 @dataclass(frozen=True)
 class CombatObservation:
     health: HealthObservation
+    player: PlayerScreenDetection | None
     targets: tuple[MonsterDetection, ...]
     confirmed_targets: tuple[MonsterDetection, ...]
+    in_range_targets: tuple[MonsterDetection, ...]
     target: MonsterDetection | None
     action: str
     reason: str
@@ -154,8 +157,10 @@ def observe_combat(
     if health.healthy is False:
         return CombatObservation(
             health=health,
+            player=None,
             targets=(),
             confirmed_targets=(),
+            in_range_targets=(),
             target=None,
             action=heal_action,
             reason="hp-low",
@@ -167,25 +172,54 @@ def observe_combat(
         if monster_tracker is not None
         else targets
     )
-    target = confirmed_targets[0] if confirmed_targets else None
+    player = detect_player_screen(frame_bgr, config.get("player", {}))
+    attack_range = config.get("attack_range", {})
+    range_x = max(0, int(attack_range.get("x", 0)))
+    range_y = max(0, int(attack_range.get("y", 0)))
+    in_range_targets = ()
+    if player is not None:
+        px, py = player.anchor
+        in_range_targets = tuple(
+            target
+            for target in confirmed_targets
+            if abs(target.center[0] - px) <= range_x
+            and abs(target.center[1] - py) <= range_y
+        )
+    target = None
+    if player is not None:
+        target = min(
+            in_range_targets,
+            key=lambda item: abs(item.center[0] - player.anchor[0]),
+            default=None,
+        )
 
     if target is not None:
         return CombatObservation(
             health=health,
+            player=player,
             targets=targets,
             confirmed_targets=confirmed_targets,
+            in_range_targets=in_range_targets,
             target=target,
             action=attack_action,
-            reason="monster-candidate-in-fixed-region",
+            reason="confirmed-monster-in-attack-range",
         )
 
+    if player is None:
+        reason = "player-not-found"
+    elif confirmed_targets:
+        reason = "no-monster-in-attack-range"
+    else:
+        reason = "no-target"
     return CombatObservation(
         health=health,
+        player=player,
         targets=targets,
         confirmed_targets=confirmed_targets,
+        in_range_targets=in_range_targets,
         target=None,
         action=observe_action,
-        reason="no-target",
+        reason=reason,
     )
 
 
@@ -195,10 +229,34 @@ def render_combat_debug_frame(
     combat: CombatObservation,
 ) -> np.ndarray:
     output = render_debug_frame(frame_bgr, minimap)
+    if combat.player is not None:
+        x, y, width, height = combat.player.name_box
+        cv2.rectangle(output, (x, y), (x + width, y + height), (255, 255, 0), 2)
+        cv2.drawMarker(
+            output,
+            combat.player.anchor,
+            (255, 255, 0),
+            cv2.MARKER_CROSS,
+            20,
+            2,
+        )
+        cv2.putText(
+            output,
+            f"{combat.player.name} {combat.player.score:.2f}",
+            (x, max(20, y - 6)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (255, 255, 0),
+            2,
+            cv2.LINE_AA,
+        )
     for target in combat.targets:
         color = (0, 0, 255)
         thickness = 1
         if target in combat.confirmed_targets:
+            color = (0, 200, 255)
+            thickness = 2
+        if target in combat.in_range_targets:
             color = (0, 255, 0)
             thickness = 2
         x, y, width, height = target.box

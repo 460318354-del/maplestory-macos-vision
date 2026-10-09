@@ -79,12 +79,14 @@ python -m maplevision \
   --debug-output work/captures/minimap-debug.png
 ```
 
-The current combat milestone uses the yellow minimap player dot, a configured
-left-lower platform region, two stump shade templates, multi-frame tracking,
-and the HP bar to propose `hold_attack(ctrl)`, `heal(1)`, or `observe`.
-The red markers on the minimap represent other players and are deliberately
-not used as attack targets. These are still action proposals only while
-`dry-run` is enabled.
+The current combat milestone uses the yellow minimap player dot for map
+position, the main-screen `Conquerork` name tag for the character anchor, a
+configured left-lower platform region, two stump shade templates, multi-frame
+tracking, and the HP bar. Attack proposals require both a confirmed stump and
+the screen-space player anchor to be within the configured rectangular attack
+range. If the name tag is not found, the controller proposes `observe` rather
+than attack. The red minimap markers represent other players and are not used
+as monster targets. Actions remain proposals only while `dry-run` is enabled.
 
 For deterministic local testing with an image:
 

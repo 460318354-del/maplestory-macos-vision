@@ -95,6 +95,16 @@ class VisionController:
                 combat.action,
                 combat.reason,
             )
+        if combat.player is None:
+            logger.info("screen player: not-found")
+        else:
+            logger.info(
+                "screen player: name=%s anchor=%s score=%.3f in_range=%s",
+                combat.player.name,
+                combat.player.anchor,
+                combat.player.score,
+                len(combat.in_range_targets),
+            )
 
         debug_output = self.config["system"].get("debug_output", "")
         if debug_output:

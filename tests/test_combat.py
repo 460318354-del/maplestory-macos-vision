@@ -1,10 +1,14 @@
 import numpy as np
 
+import maplevision.vision.combat as combat_module
 from maplevision.vision.combat import (
+    HealthObservation,
     observe_combat,
     observe_health,
 )
+from maplevision.vision.monster import MonsterDetection
 from maplevision.vision.minimap import MinimapObservation
+from maplevision.vision.player_screen import PlayerScreenDetection
 from maplevision.vision.player import Point
 
 
@@ -73,3 +77,97 @@ def test_combat_prioritizes_heal_over_attack():
     )
     assert combat.action == "heal"
     assert combat.reason == "hp-low"
+
+
+def test_combat_requires_screen_player_before_attack(monkeypatch):
+    target = _target(200, 100)
+    monkeypatch.setattr(combat_module, "observe_health", lambda *_: _healthy())
+    monkeypatch.setattr(combat_module, "detect_monsters", lambda *_: (target,))
+    monkeypatch.setattr(combat_module, "detect_player_screen", lambda *_: None)
+
+    combat = observe_combat(
+        np.zeros((240, 320, 3), dtype=np.uint8),
+        _combat_config(),
+        _minimap(),
+    )
+
+    assert combat.action == "observe"
+    assert combat.target is None
+    assert combat.reason == "player-not-found"
+
+
+def test_combat_attacks_nearest_confirmed_target_inside_configured_range(monkeypatch):
+    farther = _target(240, 100)
+    nearer = _target(180, 100)
+    player = PlayerScreenDetection(
+        name="Conquerork",
+        score=0.99,
+        name_box=(100, 100, 40, 20),
+        anchor=(150, 110),
+    )
+    monkeypatch.setattr(combat_module, "observe_health", lambda *_: _healthy())
+    monkeypatch.setattr(combat_module, "detect_monsters", lambda *_: (farther, nearer))
+    monkeypatch.setattr(combat_module, "detect_player_screen", lambda *_: player)
+
+    combat = observe_combat(
+        np.zeros((240, 320, 3), dtype=np.uint8),
+        _combat_config(),
+        _minimap(),
+    )
+
+    assert combat.action == "attack"
+    assert combat.target == nearer
+    assert combat.in_range_targets == (farther, nearer)
+    assert combat.reason == "confirmed-monster-in-attack-range"
+
+
+def test_combat_observes_when_confirmed_monster_is_out_of_range(monkeypatch):
+    target = _target(260, 100)
+    player = PlayerScreenDetection(
+        name="Conquerork",
+        score=0.99,
+        name_box=(100, 100, 40, 20),
+        anchor=(150, 110),
+    )
+    monkeypatch.setattr(combat_module, "observe_health", lambda *_: _healthy())
+    monkeypatch.setattr(combat_module, "detect_monsters", lambda *_: (target,))
+    monkeypatch.setattr(combat_module, "detect_player_screen", lambda *_: player)
+
+    combat = observe_combat(
+        np.zeros((240, 320, 3), dtype=np.uint8),
+        _combat_config(),
+        _minimap(),
+    )
+
+    assert combat.action == "observe"
+    assert combat.target is None
+    assert combat.reason == "no-monster-in-attack-range"
+
+
+def _healthy():
+    return HealthObservation(region=None, ratio=1.0, healthy=True)
+
+
+def _target(x, y):
+    return MonsterDetection(
+        label="stump",
+        score=0.95,
+        box=(x, y, 20, 20),
+    )
+
+
+def _combat_config():
+    return {
+        "attack_action": "attack",
+        "observe_action": "observe",
+        "player": {"enabled": True},
+        "attack_range": {"x": 100, "y": 50},
+    }
+
+
+def _minimap():
+    return MinimapObservation(
+        region=(0, 0, 10, 10),
+        player_local=None,
+        player_global=None,
+    )

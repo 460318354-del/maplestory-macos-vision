@@ -22,6 +22,19 @@ combat:
   attack_action: "hold_attack(ctrl)"
   heal_action: "heal(1)"
   observe_action: "observe"
+  player:
+    enabled: true
+    name: "Conquerork"
+    template: assets/templates/player/name_conquerork.png
+    # Search the playable area while excluding most UI panels.
+    search_region: [0, 500, 2200, 800]
+    threshold: 0.75
+    # The character's feet sit just above this name-tag template.
+    anchor_offset: [70, -5]
+  attack_range:
+    # Provisional pixel bounds; validate against dry-run debug frames.
+    x: 260
+    y: 180
   monsters:
     enabled: true
     # Lower-left current-platform spawn area. Coordinates are relative to the
