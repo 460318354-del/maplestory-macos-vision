@@ -7,9 +7,12 @@ from typing import Any
 import cv2
 import numpy as np
 
-from .minimap import MinimapObservation, render_debug_frame
-from .monster import MonsterDetection, MonsterTracker, detect_monsters
-from .player_screen import PlayerScreenDetection, detect_player_screen
+from .monster import MonsterDetection, MonsterDetector, MonsterTracker, detect_monsters
+from .player_screen import (
+    PlayerScreenDetection,
+    PlayerScreenDetector,
+    detect_player_screen,
+)
 
 
 @dataclass(frozen=True)
@@ -22,13 +25,16 @@ class HealthObservation:
 @dataclass(frozen=True)
 class CombatObservation:
     health: HealthObservation
+    mana: HealthObservation
     player: PlayerScreenDetection | None
     targets: tuple[MonsterDetection, ...]
     confirmed_targets: tuple[MonsterDetection, ...]
     in_range_targets: tuple[MonsterDetection, ...]
     target: MonsterDetection | None
+    nearest_target: MonsterDetection | None
     action: str
     reason: str
+    target_direction: str | None = None
 
 
 def _hsv_ranges(config: Any) -> list[tuple[tuple[int, int, int], tuple[int, int, int]]]:
@@ -89,6 +95,13 @@ def observe_health(
     )
 
 
+def observe_mana(
+    frame_bgr: np.ndarray,
+    config: dict[str, Any],
+) -> HealthObservation:
+    return observe_health(frame_bgr, config)
+
+
 def _health_ratio_in_region(
     frame_bgr: np.ndarray,
     region: tuple[int, int, int, int],
@@ -146,35 +159,97 @@ def _find_health_component(
 def observe_combat(
     frame_bgr: np.ndarray,
     config: dict[str, Any],
-    minimap: MinimapObservation,
     monster_tracker: MonsterTracker | None = None,
+    monster_detector: MonsterDetector | None = None,
+    player_detector: PlayerScreenDetector | None = None,
 ) -> CombatObservation:
     health = observe_health(frame_bgr, config.get("health", {}))
+    mana = observe_mana(frame_bgr, config.get("mana", {}))
     heal_action = str(config.get("heal_action", "heal"))
+    mana_action = str(config.get("mana_action", "mana"))
     attack_action = str(config.get("attack_action", "attack"))
     observe_action = str(config.get("observe_action", "observe"))
 
     if health.healthy is False:
         return CombatObservation(
             health=health,
+            mana=mana,
             player=None,
             targets=(),
             confirmed_targets=(),
             in_range_targets=(),
             target=None,
+            nearest_target=None,
             action=heal_action,
             reason="hp-low",
         )
+    if mana.healthy is False:
+        return CombatObservation(
+            health=health,
+            mana=mana,
+            player=None,
+            targets=(),
+            confirmed_targets=(),
+            in_range_targets=(),
+            target=None,
+            nearest_target=None,
+            action=mana_action,
+            reason="mp-low",
+        )
 
-    targets = detect_monsters(frame_bgr, config.get("monsters", {}))
+    monster_config = config.get("monsters", {})
+    if monster_detector is None:
+        detected_targets = detect_monsters(frame_bgr, monster_config)
+    else:
+        detected_targets = detect_monsters(
+            frame_bgr,
+            monster_config,
+            monster_detector,
+        )
+    allowed_labels = {
+        str(label)
+        for label in monster_config.get("allowed_labels", [])
+        if str(label)
+    }
+    targets = (
+        tuple(
+            target
+            for target in detected_targets
+            if target.label in allowed_labels
+        )
+        if allowed_labels
+        else detected_targets
+    )
     confirmed_targets = (
         monster_tracker.update(targets)
         if monster_tracker is not None
         else targets
     )
-    player = detect_player_screen(frame_bgr, config.get("player", {}))
+    if not confirmed_targets:
+        return CombatObservation(
+            health=health,
+            mana=mana,
+            player=None,
+            targets=targets,
+            confirmed_targets=(),
+            in_range_targets=(),
+            target=None,
+            nearest_target=None,
+            action=observe_action,
+            reason="no-target",
+        )
+
+    player_config = config.get("player", {})
+    player = (
+        player_detector.detect(frame_bgr, player_config)
+        if player_detector is not None
+        else detect_player_screen(frame_bgr, player_config)
+    )
     attack_range = config.get("attack_range", {})
-    range_x = max(0, int(attack_range.get("x", 0)))
+    range_x = max(
+        0,
+        int(attack_range.get("distance", attack_range.get("x", 0))),
+    )
     range_y = max(0, int(attack_range.get("y", 0)))
     in_range_targets = ()
     if player is not None:
@@ -185,50 +260,79 @@ def observe_combat(
             if abs(target.center[0] - px) <= range_x
             and abs(target.center[1] - py) <= range_y
         )
-    target = None
+    nearest_target = None
+    target_direction = None
     if player is not None:
-        target = min(
-            in_range_targets,
+        nearest_target = min(
+            confirmed_targets,
             key=lambda item: abs(item.center[0] - player.anchor[0]),
             default=None,
         )
+        if nearest_target is not None:
+            target_direction = _horizontal_direction(
+                nearest_target.center[0],
+                player.anchor[0],
+            )
+    target = None
+    if nearest_target is not None and nearest_target in in_range_targets:
+        target = nearest_target
 
     if target is not None:
         return CombatObservation(
             health=health,
+            mana=mana,
             player=player,
             targets=targets,
             confirmed_targets=confirmed_targets,
             in_range_targets=in_range_targets,
             target=target,
+            nearest_target=nearest_target,
             action=attack_action,
             reason="confirmed-monster-in-attack-range",
+            target_direction=target_direction,
         )
 
     if player is None:
         reason = "player-not-found"
     elif confirmed_targets:
-        reason = "no-monster-in-attack-range"
+        reason = "nearest-monster-out-of-attack-range"
     else:
         reason = "no-target"
+    move_action = observe_action
+    if player is not None and nearest_target is not None:
+        move_action = (
+            str(config.get("move_left_action", "move_left"))
+            if nearest_target.center[0] < player.anchor[0]
+            else str(config.get("move_right_action", "move_right"))
+        )
     return CombatObservation(
         health=health,
+        mana=mana,
         player=player,
         targets=targets,
         confirmed_targets=confirmed_targets,
         in_range_targets=in_range_targets,
         target=None,
-        action=observe_action,
+        nearest_target=nearest_target,
+        action=move_action,
         reason=reason,
+        target_direction=target_direction,
     )
+
+
+def _horizontal_direction(target_x: int, player_x: int) -> str | None:
+    if target_x < player_x:
+        return "left"
+    if target_x > player_x:
+        return "right"
+    return None
 
 
 def render_combat_debug_frame(
     frame_bgr: np.ndarray,
-    minimap: MinimapObservation,
     combat: CombatObservation,
 ) -> np.ndarray:
-    output = render_debug_frame(frame_bgr, minimap)
+    output = frame_bgr.copy()
     if combat.player is not None:
         x, y, width, height = combat.player.name_box
         cv2.rectangle(output, (x, y), (x + width, y + height), (255, 255, 0), 2)
@@ -263,10 +367,10 @@ def render_combat_debug_frame(
         cv2.rectangle(output, (x, y), (x + width, y + height), color, thickness)
         cv2.putText(
             output,
-            f"{target.score:.2f}",
+            f"{target.label} {target.score:.2f}",
             (x, max(20, y - 5)),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
+            0.45,
             color,
             1,
             cv2.LINE_AA,
@@ -286,6 +390,20 @@ def render_combat_debug_frame(
                 2,
                 cv2.LINE_AA,
             )
+    if combat.mana.region is not None:
+        x, y, width, height = combat.mana.region
+        cv2.rectangle(output, (x, y), (x + width, y + height), (255, 0, 0), 2)
+        if combat.mana.ratio is not None:
+            cv2.putText(
+                output,
+                f"mp={combat.mana.ratio:.0%}",
+                (x, min(output.shape[0] - 8, y + height + 18)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 0, 0),
+                2,
+                cv2.LINE_AA,
+            )
 
     cv2.putText(
         output,
@@ -297,16 +415,24 @@ def render_combat_debug_frame(
         2,
         cv2.LINE_AA,
     )
+    if combat.nearest_target is not None:
+        x, y, width, height = combat.nearest_target.box
+        cv2.rectangle(
+            output,
+            (x, y),
+            (x + width, y + height),
+            (255, 0, 255),
+            3,
+        )
     return output
 
 
 def save_combat_debug_frame(
     frame_bgr: np.ndarray,
-    minimap: MinimapObservation,
     combat: CombatObservation,
     path: Path,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    output = render_combat_debug_frame(frame_bgr, minimap, combat)
+    output = render_combat_debug_frame(frame_bgr, combat)
     if not cv2.imwrite(str(path), output):
         raise RuntimeError(f"Unable to write debug image: {path}")

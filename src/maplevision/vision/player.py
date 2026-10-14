@@ -34,3 +34,49 @@ def find_color_point(
     center_x = int(moments["m10"] / moments["m00"]) + x
     center_y = int(moments["m01"] / moments["m00"]) + y
     return Point(center_x, center_y)
+
+
+def find_compact_color_point(
+    frame_bgr: np.ndarray,
+    region: tuple[int, int, int, int],
+    lower_hsv: tuple[int, int, int],
+    upper_hsv: tuple[int, int, int],
+    *,
+    min_area: int = 4,
+    max_area: int = 80,
+    max_width: int = 12,
+    max_height: int = 12,
+) -> Point | None:
+    """Find a small color marker while ignoring large background regions."""
+    x, y, width, height = region
+    roi = frame_bgr[y : y + height, x : x + width]
+    if roi.size == 0:
+        return None
+
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, lower_hsv, upper_hsv)
+    component_count, labels, stats, centroids = cv2.connectedComponentsWithStats(
+        mask
+    )
+    candidates: list[tuple[float, int]] = []
+    for label in range(1, component_count):
+        _, _, component_width, component_height, area = stats[label]
+        if not (
+            min_area <= area <= max_area
+            and component_width <= max_width
+            and component_height <= max_height
+        ):
+            continue
+        box_area = max(1, int(component_width) * int(component_height))
+        compactness = float(area) / box_area
+        if compactness < 0.45:
+            continue
+        # Prefer a filled marker over tiny anti-aliased fragments.
+        score = compactness * float(area)
+        candidates.append((score, label))
+
+    if not candidates:
+        return None
+    _, selected_label = max(candidates)
+    center_x, center_y = centroids[selected_label]
+    return Point(int(center_x) + x, int(center_y) + y)

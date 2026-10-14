@@ -1,76 +1,471 @@
 system:
   fps: 8
-  dry_run: true
+  gui_runtime_interval_ms: 150
+  dry_run: false
   debug: true
-  debug_output: ""
-
+  debug_output: ''
 game_window:
-  title_contains: "MapleStory"
-
+  title_contains: MapleStory
 capture:
-  test_image: ""
-
+  test_image: ''
+  output_size:
+  - 800
+  - 600
 minimap:
-  # Map content area inside the minimap, excluding the title/header.
-  region: [70, 285, 500, 180]
+  enabled: true
+  region:
+  - 34
+  - 73
+  - 138
+  - 115
   player_color_hsv:
-    lower: [20, 120, 120]
-    upper: [40, 255, 255]
-
+    lower:
+    - 24
+    - 145
+    - 150
+    upper:
+    - 32
+    - 255
+    - 255
+  edge_threshold: 0.25
 combat:
   enabled: true
-  attack_action: "hold_attack(ctrl)"
-  heal_action: "heal(1)"
-  observe_action: "observe"
+  attack_action: tap_attack(ctrl)
+  move_left_action: move_left(left)
+  move_right_action: move_right(right)
+  heal_action: heal(1)
+  mana_action: mana(2)
+  observe_action: observe
+  player_recovery:
+    min_seconds: 3.0
+    max_seconds: 10.0
+  patrol:
+    no_target_seconds: 2.0
+    move_duration_ms:
+    - 3000
+    - 8000
+    mode: minimap_target
+    minimap_target:
+    - 82
+    - 60
+    target_tolerance: 2
+    enabled: false
+  fixed_point:
+    enabled: true
+    point:
+    - 63
+    - 78
+    return_distance_px: 10.0
+    target_tolerance: 2
+    roam_enabled: false
+  periodic_key:
+    enabled: true
+    interval_seconds: 600.0
+    key: '3'
+  attack_target_missing_frames: 3
+  pickup:
+    enabled: true
+    interval_seconds: 10.0
+    scan_seconds: 1.0
+    min_coins: 1
+    pickup_distance: 28
+    target_missing_grace_seconds: 0.45
+    action: pickup(z,3)
+    cycle_seconds: 1.0
+    scan_after_kill_seconds: 2.0
+    coins:
+      enabled: true
+      region:
+      - 0
+      - 280
+      - 796
+      - 118
+      template_groups:
+        金币:
+        - assets/templates/monsters/金币
+      allowed_labels:
+      - 金币
+      threshold: 0.72
+      overlap_threshold: 0.45
+      peak_window: 20
+      max_results: 12
   player:
     enabled: true
-    name: "Conquerork"
-    template: assets/templates/player/name_conquerork.png
-    # Search the playable area while excluding most UI panels.
-    search_region: [0, 500, 2200, 800]
-    threshold: 0.75
-    # The character's feet sit just above this name-tag template.
-    anchor_offset: [70, -5]
+    id: Conquerork
+    name: Conquerork
+    search_region:
+    - 0
+    - 280
+    - 796
+    - 118
+    threshold: 0.72
+    scales:
+    - 1.0
+    templates:
+    - assets/templates/monsters/角色
+    anchor_below_nameplate: 24
   attack_range:
-    # Provisional pixel bounds; validate against dry-run debug frames.
-    x: 260
+    distance: 1000
     y: 180
+  enemy_health_bar:
+    enabled: false
+    widths:
+    - 50
+    - 52
+    height: 10
+    height_tolerance: 2
+    search_x_padding: 24
+    search_top_offset: -60
+    search_bottom_offset: 10
+    structure_threshold: 0.52
+    appear_confirm_frames: 1
+    missing_confirm_frames: 2
+    acquire_timeout_frames: 3
   monsters:
     enabled: true
-    # Lower-left current-platform spawn area. Coordinates are relative to the
-    # captured window image, not the macOS desktop.
-    region: [0, 1220, 760, 150]
-    templates:
-      - assets/templates/stump/stump_single_light_upper.png
-      - assets/templates/stump/stump_single_dark_upper.png
-    threshold: 0.62
+    region:
+    - 0
+    - 280
+    - 796
+    - 118
+    template_groups:
+      yellow_mushroom:
+      - assets/templates/monsters/yellow_mushroom
+      red_snail:
+      - assets/templates/monsters/red_snail
+      small_mushroom:
+      - assets/templates/monsters/small_mushroom
+      710猪:
+      - assets/templates/monsters/710猪
+      绿不灵:
+      - assets/templates/monsters/绿不灵
+    allowed_labels:
+    - yellow_mushroom
+    threshold: 0.72
     overlap_threshold: 0.45
     peak_window: 45
     max_results: 8
-    confirm_frames: 2
+    confirm_frames: 1
     max_misses: 2
     max_distance: 120
   health:
     enabled: true
-    # Leave empty to auto-locate the bottom HP bar in the left half of the UI.
-    region: []
-    expected_width: 210
-    low_threshold: 0.40
+    region:
+    - 220
+    - 583
+    - 105
+    - 14
+    expected_width: 105
+    low_threshold: 0.4
     color_hsv:
       ranges:
-        - lower: [0, 100, 80]
-          upper: [12, 255, 255]
-        - lower: [168, 100, 80]
-          upper: [179, 255, 255]
-
+      - lower:
+        - 0
+        - 100
+        - 80
+        upper:
+        - 12
+        - 255
+        - 255
+      - lower:
+        - 168
+        - 100
+        - 80
+        upper:
+        - 179
+        - 255
+        - 255
+  mana:
+    enabled: true
+    region:
+    - 328
+    - 583
+    - 105
+    - 14
+    expected_width: 105
+    low_threshold: 0.1
+    color_hsv:
+      ranges:
+      - lower:
+        - 95
+        - 80
+        - 80
+        upper:
+        - 125
+        - 255
+        - 255
+route_combat:
+  enabled: true
+  mode: path_combat
+  active_group: 8蘑菇
+  no_monster_seconds: 18.0
+  alt_delay_ms: 150
+  jump_key: alt
+  obstacle_check_interval_ms: 300
+  obstacle_jump_delay_min_ms: 500
+  obstacle_jump_delay_max_ms: 700
+  climb_minimap_rise_px: 1
+  point_tolerance: 3
+  ladder_tolerance: 3
+  jump_point_tolerance: 8
+  points:
+  - name: 8蘑菇点2
+    region:
+    - 25
+    - 34
+    - 41
+    - 11
+    group: 8蘑菇
+  - name: 8蘑菇点1
+    region:
+    - 16
+    - 50
+    - 63
+    - 18
+    group: 8蘑菇
+  - name: 8蘑菇点3
+    region:
+    - 80
+    - 43
+    - 46
+    - 13
+    group: 8蘑菇
+  - name: 猪1
+    region:
+    - 28
+    - 48
+    - 87
+    - 14
+    group: 猪
+  - name: 猪2
+    region:
+    - 114
+    - 45
+    - 96
+    - 28
+    group: 猪
+  - name: 猪3
+    region:
+    - 146
+    - 18
+    - 50
+    - 14
+    group: 猪
+  - name: 射手1
+    region:
+    - 34
+    - 76
+    - 69
+    - 12
+    group: 猪
+  - name: 绿不灵
+    region:
+    - 32
+    - 74
+    - 68
+    - 13
+    group: 8蘑菇
+  point_profiles:
+    8蘑菇点1:
+      fixed_point:
+      - 35
+      - 61
+      fixed_point_enabled: true
+      monster_region:
+      - 2
+      - 292
+      - 797
+      - 142
+    8蘑菇点2:
+      fixed_point:
+      - 69
+      - 83
+      fixed_point_enabled: true
+      monster_region:
+      - 2
+      - 281
+      - 798
+      - 118
+    8蘑菇点3:
+      fixed_point:
+      - 94
+      - 51
+      fixed_point_enabled: true
+      monster_region:
+      - 158
+      - 279
+      - 410
+      - 114
+    猪1:
+      monster_region:
+      - 4
+      - 322
+      - 767
+      - 112
+      fixed_point:
+      - 84
+      - 57
+      fixed_point_enabled: true
+    猪2:
+      monster_region:
+      - 4
+      - 322
+      - 767
+      - 112
+      fixed_point:
+      - 197
+      - 56
+      fixed_point_enabled: true
+    猪3:
+      monster_region:
+      - 77
+      - 256
+      - 723
+      - 136
+      fixed_point:
+      - 172
+      - 23
+      fixed_point_enabled: true
+    射手1:
+      monster_region:
+      - 3
+      - 325
+      - 795
+      - 115
+      fixed_point:
+      - 69
+      - 83
+      fixed_point_enabled: true
+    绿不灵:
+      fixed_point:
+      - 63
+      - 78
+      fixed_point_enabled: true
+      monster_region:
+      - 0
+      - 280
+      - 796
+      - 118
+  ladders:
+  - name: 梯子1
+    point:
+    - 28
+    - 58
+    climb_duration_ms: 1800
+    group: 默认
+  - name: 梯子3
+    point:
+    - 28
+    - 58
+    climb_duration_ms: 4000
+    group: 默认
+  - name: 8蘑菇梯子1
+    point:
+    - 28
+    - 58
+    climb_duration_ms: 4000
+    group: 8蘑菇
+  - name: 梯子4
+    point:
+    - 102
+    - 47
+    climb_duration_ms: 1800
+    group: 默认
+  - name: 跳跃1
+    point:
+    - 102
+    - 47
+    climb_duration_ms: 1800
+    group: 默认
+  - name: 跳跃2
+    point:
+    - 70
+    - 54
+    climb_duration_ms: 1800
+    group: 默认
+  - name: 跳跃3
+    point:
+    - 79
+    - 47
+    climb_duration_ms: 1800
+    group: 默认
+  - name: 猪梯
+    point:
+    - 191
+    - 53
+    climb_duration_ms: 1800
+    group: 猪
+  paths:
+  - name: 8蘑菇点3 -> 8蘑菇点1
+    source: 8蘑菇点3
+    target: 8蘑菇点1
+    steps:
+    - type: move_left
+      duration_ms: 1000
+    group: 8蘑菇
+  - name: 8蘑菇点1 -> 8蘑菇点2
+    source: 8蘑菇点1
+    target: 8蘑菇点2
+    steps:
+    - type: move_to_ladder
+      ladder: 8蘑菇梯子1
+    - type: climb
+      ladder: 梯子1
+      key: up
+      duration_ms: 2800
+    group: 8蘑菇
+  - name: 8蘑菇点2 -> 8蘑菇点3
+    source: 8蘑菇点2
+    target: 8蘑菇点3
+    steps:
+    - type: move_right
+      duration_ms: 6000
+    - type: move_to_ladder
+      ladder: 跳跃2
+    - type: jump_right
+      duration_ms: 500
+    - type: move_to_ladder
+      ladder: 跳跃3
+    - type: jump_right
+      duration_ms: 500
+    - type: move_right
+      duration_ms: 1200
+    group: 8蘑菇
+  - name: 猪1 -> 猪2
+    source: 猪1
+    target: 猪2
+    steps:
+    - type: move_to_point
+      point: 猪2
+    group: 猪
+  - name: 猪3 -> 猪1
+    source: 猪3
+    target: 猪1
+    steps:
+    - type: move_to_point
+      point: 猪1
+    group: 猪
+  - name: 猪2 -> 猪3
+    source: 猪2
+    target: 猪3
+    steps:
+    - type: move_to_ladder
+      ladder: 猪梯
+    - type: climb
+      ladder: 猪梯
+      key: up
+      duration_ms: 3800
+    - type: move_to_point
+      point: 猪3
+    group: 猪
 route:
-  image: ""
+  image: ''
   search_radius: 40
   colors:
-    "255,0,0": "left"
-    "0,0,255": "right"
-    "255,127,0": "left_jump"
-    "0,255,255": "right_jump"
-    "127,255,0": "down_jump"
-    "0,255,127": "stop"
-    "255,255,0": "goal"
+    255,0,0: left
+    0,0,255: right
+    255,127,0: left_jump
+    0,255,255: right_jump
+    127,255,0: down_jump
+    0,255,127: stop
+    255,255,0: goal

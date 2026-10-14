@@ -6,7 +6,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .player import Point, find_color_point
+from .player import Point, find_compact_color_point
 
 
 @dataclass(frozen=True)
@@ -14,6 +14,17 @@ class MinimapObservation:
     region: tuple[int, int, int, int]
     player_local: Point | None
     player_global: Point | None
+
+    @property
+    def horizontal_ratio(self) -> float | None:
+        if self.player_local is None or self.region[2] <= 1:
+            return None
+        return self.player_local.x / max(1, self.region[2] - 1)
+
+    @property
+    def player_target(self) -> Point | None:
+        """Return the player's position in minimap-local coordinates."""
+        return self.player_local
 
 
 def observe_minimap(
@@ -23,7 +34,15 @@ def observe_minimap(
     upper_hsv: tuple[int, int, int],
 ) -> MinimapObservation:
     x, y, width, height = region
-    player_global = find_color_point(frame_bgr, region, lower_hsv, upper_hsv)
+    # The minimap contains yellow terrain and decorations. The player marker
+    # is a compact component; selecting the largest yellow component often
+    # locks onto a tree or platform and produces a false direction.
+    player_global = find_compact_color_point(
+        frame_bgr,
+        region,
+        lower_hsv,
+        upper_hsv,
+    )
     player_local = None
     if player_global is not None:
         player_local = Point(player_global.x - x, player_global.y - y)
@@ -56,7 +75,10 @@ def render_debug_frame(
             18,
             2,
         )
-        label += f" player=({observation.player_local.x},{observation.player_local.y})"
+        label += (
+            f" player=({observation.player_local.x},"
+            f"{observation.player_local.y})"
+        )
     cv2.putText(
         output,
         label,
@@ -78,4 +100,3 @@ def save_debug_frame(
     path.parent.mkdir(parents=True, exist_ok=True)
     if not cv2.imwrite(str(path), render_debug_frame(frame_bgr, observation)):
         raise RuntimeError(f"Unable to write debug image: {path}")
-

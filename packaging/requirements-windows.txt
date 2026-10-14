@@ -1,0 +1,2 @@
+-e .
+pyinstaller>=6.0
