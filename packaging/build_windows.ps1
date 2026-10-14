@@ -13,7 +13,7 @@ if (-not (Test-Path ".venv\Scripts\python.exe")) {
 
 $Python = (Resolve-Path ".venv\Scripts\python.exe").Path
 & $Python -m pip install --upgrade pip
-& $Python -m pip install .
+& $Python -m pip install ".[dev]"
 & $Python -m pip install --upgrade pyinstaller
 
 & $Python -m PyInstaller packaging\MapleVision.spec --clean --noconfirm
