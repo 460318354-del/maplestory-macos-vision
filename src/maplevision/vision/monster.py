@@ -8,6 +8,8 @@ from typing import Any
 import cv2
 import numpy as np
 
+from .image_io import read_image
+
 
 @dataclass(frozen=True)
 class MonsterTemplate:
@@ -127,7 +129,7 @@ class MonsterDetector:
 def load_templates(paths: list[str | Path]) -> tuple[MonsterTemplate, ...]:
     templates: list[MonsterTemplate] = []
     for path in _template_files(paths):
-        image = cv2.imread(str(path), cv2.IMREAD_COLOR)
+        image = read_image(path, cv2.IMREAD_COLOR)
         if image is None:
             raise FileNotFoundError(f"Unable to read monster template: {path}")
         templates.append(
@@ -152,7 +154,7 @@ def load_template_groups(
             else list(group_paths)
         )
         for path in _template_files(paths):
-            image = cv2.imread(str(path), cv2.IMREAD_COLOR)
+            image = read_image(path, cv2.IMREAD_COLOR)
             if image is None:
                 raise FileNotFoundError(f"Unable to read monster template: {path}")
             templates.append(

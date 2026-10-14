@@ -47,6 +47,7 @@ from .platform.windows.input import WindowsInputController
 from .route_test import RouteTestController
 from .vision.minimap import observe_minimap
 from .vision.monster import detect_monsters, render_monster_debug_frame
+from .vision.image_io import write_image
 from .vision.player_screen import detect_player_screen, resolve_player_config
 
 logger = logging.getLogger(__name__)
@@ -1201,7 +1202,7 @@ class WindowsMapleVisionApp:
             index += 1
         path = directory / f"template_{index:02d}.png"
         crop = self.training_frame[top:bottom, left:right].copy()
-        if not cv2.imwrite(str(path), crop):
+        if not write_image(path, crop):
             self.training_info_var.set("模板保存失败")
             return
         self.last_template_path = path

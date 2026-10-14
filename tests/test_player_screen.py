@@ -135,7 +135,7 @@ def test_player_detection_can_match_scaled_name_template(tmp_path):
 
 
 def test_player_detection_uses_best_match_from_template_directory(tmp_path):
-    template_dir = tmp_path / "角色"
+    template_dir = tmp_path / "player_templates"
     template_dir.mkdir()
     weak = np.zeros((16, 28, 3), dtype=np.uint8)
     weak[4:12, 6:22] = [80, 80, 80]

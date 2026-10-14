@@ -9,6 +9,8 @@ from typing import Any
 import cv2
 import numpy as np
 
+from .image_io import read_image
+
 
 @dataclass(frozen=True)
 class PlayerScreenDetection:
@@ -218,7 +220,7 @@ def _prepare_player_template(
     path: Path,
     config: dict[str, Any],
 ) -> PreparedPlayerTemplate:
-    template = cv2.imread(str(path), cv2.IMREAD_COLOR)
+    template = read_image(path, cv2.IMREAD_COLOR)
     if template is None:
         raise FileNotFoundError(f"Unable to read player template: {path}")
     return PreparedPlayerTemplate(
