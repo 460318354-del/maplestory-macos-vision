@@ -2,10 +2,13 @@
 
 from pathlib import Path
 
-project_root = Path(SPECPATH).resolve().parent.parent
+spec_path = Path(SPECPATH).resolve()
+spec_dir = spec_path if spec_path.is_dir() else spec_path.parent
+project_root = spec_dir.parent
 source_root = project_root / "src"
 config_file = project_root / "config" / "default.yaml"
 template_root = project_root / "assets" / "templates"
+entry_script = spec_dir / "windows_entry.py"
 
 hiddenimports = [
     "win32api",
@@ -21,7 +24,7 @@ datas = [
 ]
 
 a = Analysis(
-    [str(project_root / "packaging" / "windows_entry.py")],
+    [str(entry_script)],
     pathex=[str(source_root)],
     binaries=[],
     datas=datas,

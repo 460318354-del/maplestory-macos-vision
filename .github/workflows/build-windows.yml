@@ -31,7 +31,13 @@ jobs:
           python -m pytest -q
 
       - name: Build executable
-        run: python -m PyInstaller packaging\MapleVision.spec --clean --noconfirm
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "packaging\windows_entry.py")) {
+            throw "Missing packaging\windows_entry.py"
+          }
+          Get-ChildItem packaging
+          python -m PyInstaller packaging\MapleVision.spec --clean --noconfirm
 
       - name: Archive Windows package
         shell: pwsh
